@@ -14,8 +14,6 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 
 # Some constants
 INPUT_FOLDER = '/Users/albertchon/Desktop/cs231nProject/sample_images/'
-MIN_BOUND = -1000.0
-MAX_BOUND = 400.0
 PIXEL_MEAN = 0.25
 # INPUT_FOLDER = '/Users/albertchon/Desktop/cs231nProject/cs231nLung/patient1/'
 patients = os.listdir(INPUT_FOLDER)
@@ -39,8 +37,10 @@ def get_pixels_hu(slices):
     image = np.stack([s.pixel_array for s in slices])
     # Convert to int16 (from sometimes int16),
     # should be possible as values should always be low enough (<32k)
+    # print(image[np.shape(image)[0]/2, np.shape(image)[1]/2, :])
     image = image.astype(np.int16)
-
+    # print('-'*100)
+    # print(image[np.shape(image)[0]/2, np.shape(image)[1]/2, :])
     # Set outside-of-scan pixels to 0
     # The intercept is usually -1024, so air is approximately 0
     image[image == -2000] = 0
@@ -130,7 +130,7 @@ def plot_3d(image, threshold=-300, show=False):
     p = image.transpose(2, 1, 0)
 
     verts, faces = measure.marching_cubes(p, threshold)
-
+    # verts, faces = measure.marching_cubes(p, None)
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
 
@@ -196,15 +196,6 @@ def segment_lung_mask(image, fill_lung_structures=True):
 
     return binary_image
 
-"""
-Normalization and zero-centering done during training
-"""
-def normalize(image):
-    image = (image - MIN_BOUND) / (MAX_BOUND - MIN_BOUND)
-    image[image>1] = 1.
-    image[image<0] = 0.
-    return image
-
 def zero_center(image):
     image = image - PIXEL_MEAN
     return image
@@ -217,22 +208,36 @@ def testScans():
     pix_resampled, spacing = resample(first_patient_pixels, first_patient, [1, 1, 1])
     # print("Shape before resampling\t", first_patient_pixels.shape) # (128, 512, 512)
     # print("Shape after resampling\t", pix_resampled.shape)   # (320, 347, 347)
-    plot_3d(pix_resampled, 400, show=True)
+    # plot_3d(pix_resampled, 400, show=True)
     segmented_lungs = segment_lung_mask(pix_resampled, False)
     segmented_lungs_fill = segment_lung_mask(pix_resampled, True)
     show3D = False
     if show3D:
+        # segmented_lungs has no air.
         plot_3d(segmented_lungs, 0)
-        plot_3d(segmented_lungs_fill, 0)
-        plot_3d(segmented_lungs_fill - segmented_lungs, 0)
+        # plot_3d(segmented_lungs_fill, 0)
+        # plot_3d(segmented_lungs_fill - segmented_lungs, 0)
+
+
+def normalize(image):
+    MIN_BOUND = 0.0
+    MAX_BOUND = 1000.0
+    print(np.max(image), ' is max of image in normalize')
+    image = (image - MIN_BOUND) / (MAX_BOUND - MIN_BOUND)
+    image[image > 1] = 1.
+    image[image < 0] = 0.
+    return np.float32(image)
+
 
 def preprocessPatient(patient):
     first_patient = load_scan(patient)
     first_patient_pixels = np.asarray(get_pixels_hu(first_patient))
     pix_resampled, spacing = resample(first_patient_pixels, first_patient, [1, 1, 1])
     segmented_lungs_fill = segment_lung_mask(pix_resampled, True)
-    # print(np.shape(segmented_lungs_fill)) # (320, 347, 347)
-    return segmented_lungs_fill
+    lung_data = segmented_lungs_fill * -pix_resampled
+    norm_lung_data = normalize(lung_data)
+
+    return norm_lung_data
 
 # makes a directory
 def ensure_dir(file_path):
@@ -241,15 +246,17 @@ def ensure_dir(file_path):
         os.makedirs(directory)
 
 def preprocessAll():
-    path = '/Users/albertchon/Desktop/cs231nProject/cs231nLung/preprocessed/'
+    path = '/Users/albertchon/Desktop/cs231nProject/cs231nLung/sample_npy_data/'
     ensure_dir(path)
-    for p in range(len(patients)):#range(len(patients)):
-        scan = preprocessPatient(INPUT_FOLDER + patients[p])
-        s = np.shape(scan)
-        scan = np.reshape(scan, (s[0], s[1]*s[2]))
-        df = pd.DataFrame(scan)
-        df.to_csv(path + 'patient' + str(p)+'.csv')
-        print('wrote patient' + path + 'patient' + str(p)+'.csv')
+    n_slices = 64.0
+    x_dim = 128.0
+    y_dim = 128.0
+
+    for p in range(len(patients)): #range(len(patients)):
+        x = preprocessPatient(INPUT_FOLDER + patients[p])
+        x_resample = np.float16(scipy.ndimage.zoom(x, (n_slices / x.shape[0], x_dim / x.shape[1], y_dim / x.shape[2]), order=0))
+        np.save(path + patients[p], x_resample)
+        print('wrote patient' + path +patients[p])
 
 if __name__ == "__main__":
     # testScans()
