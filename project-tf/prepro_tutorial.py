@@ -7,6 +7,7 @@ import os
 import scipy.ndimage
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import sys
 
 from skimage import measure, morphology
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -167,10 +168,24 @@ def segment_lung_mask(image, fill_lung_structures=True):
     #   Improvement: Pick multiple background labels from around the patient
     #   More resistant to "trays" on which the patient lays cutting the air
     #   around the person in half
-    background_label = labels[0, 0, 0]
+    background_label1 = labels[0, 0, 0]
+    background_label2 = labels[0, 0, -1]
+    background_label3 = labels[0, -1, 0]
+    background_label4 = labels[0, -1, -1]
+    background_label5 = labels[-1, 0, 0]
+    background_label6 = labels[-1, 0, -1]
+    background_label7 = labels[-1, -1, 0]
+    background_label8 = labels[-1, -1, -1]
 
     # Fill the air around the person
-    binary_image[background_label == labels] = 2
+    binary_image[background_label1 == labels] = 2
+    binary_image[background_label2 == labels] = 2
+    binary_image[background_label3 == labels] = 2
+    binary_image[background_label4 == labels] = 2
+    binary_image[background_label5 == labels] = 2
+    binary_image[background_label6 == labels] = 2
+    binary_image[background_label7 == labels] = 2
+    binary_image[background_label8 == labels] = 2
 
     # Method of filling the lung structures (that is superior to something like
     # morphological closing)
@@ -232,9 +247,9 @@ def preprocessPatient(patient):
     first_patient = load_scan(patient)
     first_patient_pixels = np.asarray(get_pixels_hu(first_patient))
     pix_resampled, spacing = resample(first_patient_pixels, first_patient, [1, 1, 1])
+    norm_lung_data = normalize(pix_resampled)
     segmented_lungs_fill = segment_lung_mask(pix_resampled, True)
-    lung_data = segmented_lungs_fill * pix_resampled
-    norm_lung_data = normalize(lung_data)
+    norm_lung_data = norm_lung_data * segmented_lungs_fill
 
     return norm_lung_data
 
@@ -245,16 +260,16 @@ def ensure_dir(file_path):
         os.makedirs(directory)
 
 def preprocessAll():
-    path = '/home/ninja2/Documents/CS231N/project/stage1-npy/'
+    path = './stage1-npy-3d/'
     ensure_dir(path)
     n_slices = 64.0
     x_dim = 128.0
     y_dim = 128.0
-
     for p in range(len(patients)): #range(len(patients)):
+    	if p == 1137:
+    		continue
         x = preprocessPatient(INPUT_FOLDER + patients[p])
         x_resample = np.float16(scipy.ndimage.zoom(x, (n_slices / x.shape[0], x_dim / x.shape[1], y_dim / x.shape[2]), order=0))
-        x_resample = np.transpose(x_resample, [1,2,0])
         np.save(path + patients[p], x_resample)
         print('wrote patient' + path +patients[p])
 

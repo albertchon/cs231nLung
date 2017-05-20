@@ -16,24 +16,25 @@ import logging
 logging.basicConfig(level=logging.INFO)
 
 STAGE = 2
-
-tf.app.flags.DEFINE_float("best_val_accuracy", -1.0, "current best validation accuracy")
-tf.app.flags.DEFINE_string("model", 'linear', "Type of model to use: linear or cnn")
+tf.app.flags.DEFINE_float("best_val_hm", -1.0, "current best validation HM between sensitivity and specificity")
+tf.app.flags.DEFINE_string("model", 'cnn', "Type of model to use: linear or cnn")
+tf.app.flags.DEFINE_string("features", 'hog', "Type of features to use: pixels or hog")
 tf.app.flags.DEFINE_integer("epochs", 10, "number of epochs")
-tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
+tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
 tf.app.flags.DEFINE_integer("num_slices", 64, "number of CT slices for each patient")
 tf.app.flags.DEFINE_integer("image_height", 128, "height of each slice in pixels")
 tf.app.flags.DEFINE_integer("image_width", 128, "width of each slice in pixels")
 tf.app.flags.DEFINE_integer("conv1_filters", 64, "number of conv filters")
 tf.app.flags.DEFINE_integer("conv2_filters", 32, "number of conv filters")
 tf.app.flags.DEFINE_integer("aff_size", 256, "affine layer size")
-tf.app.flags.DEFINE_integer("batch_size", 1, "Batch size to use during training.")
-tf.app.flags.DEFINE_float("train_size", 0.7, "Size of train set")
-tf.app.flags.DEFINE_float("val_size", 0.1, "Size of val set")
+tf.app.flags.DEFINE_integer("batch_size", 8, "Batch size to use during training.")
+tf.app.flags.DEFINE_float("train_size", 0.6, "Size of train set")
+tf.app.flags.DEFINE_float("val_size", 0.2, "Size of val set")
 tf.app.flags.DEFINE_float("test_size", 0.2, "Size of test set")
 
+
 FLAGS = tf.app.flags.FLAGS
-train_dir = './stage%s-weights/%s/' % (STAGE, FLAGS.model)
+train_dir = './stage%s-weights/%s-%s/' % (STAGE, FLAGS.model, FLAGS.features)
 
 def initialize_model(session, model, train_dir):
     ckpt = tf.train.get_checkpoint_state(train_dir)
@@ -47,7 +48,7 @@ def initialize_model(session, model, train_dir):
     return model
 
 def main(_):
-    INPUT_FOLDER = './stage%s-npy/' % (STAGE)
+    INPUT_FOLDER = './stage%s-%s-npy/' % (STAGE, FLAGS.features)
     patients = os.listdir(INPUT_FOLDER)
     patient_images = {}
     labels = {}
@@ -75,7 +76,7 @@ def main(_):
     num_val = int(np.round(num_total * FLAGS.val_size))
     num_train = int(np.round(num_total * FLAGS.train_size))
     indices = range(num_total)
-    random.seed(69)
+    random.seed(231)
     random.shuffle(indices)
     test_indices = indices[:num_test]
     val_indices = indices[num_test:num_test + num_val]
@@ -102,8 +103,19 @@ def main(_):
 
     with tf.Session() as sess:
         initialize_model(sess, lung_model, train_dir)
-        logging.info("Calculating test accuracy...")        
-        logging.info("Test accuracy: %s" % (lung_model.accuracy(sess, x_train, y_train)))
+        logging.info("Evaluating model...")        
+        train_accuracy, train_sens, train_spec = lung_model.accuracy(sess, x_train, y_train)
+        train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
+        logging.info("Training: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (train_accuracy, 
+        	train_sens, train_spec, train_hm))
+        val_accuracy, val_sens, val_spec = lung_model.accuracy(sess, x_val, y_val)
+        val_hm = (2*val_sens*val_spec) / (val_sens + val_spec)
+        logging.info("Validation: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (val_accuracy, 
+        	val_sens, val_spec, val_hm))
+        test_accuracy, test_sens, test_spec = lung_model.accuracy(sess, x_test, y_test)
+        test_hm = (2*test_sens*test_spec) / (test_sens + test_spec)
+        logging.info("Test: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (test_accuracy, 
+        	test_sens, test_spec, test_hm))
 
 if __name__ == "__main__":
     tf.app.run()

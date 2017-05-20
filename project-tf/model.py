@@ -177,9 +177,15 @@ class LungSystem(object):
     def accuracy(self, session, x, y):
         outputs = self.predict(session, x)
         probabilities = outputs[0]
-        predictions = np.argmax(probabilities, axis=1)
-        num_correct = np.sum(predictions == y)
-        return float(num_correct)/len(y)
+        pred = np.argmax(probabilities, axis=1)
+        TP = float(np.sum(y[y == 1] == pred[y == 1]))
+        TN = float(np.sum(y[y == 0] == pred[y == 0]))
+        FP = float(np.sum(y[y == 0] != pred[y == 0]))
+        FN = float(np.sum(y[y == 1] != pred[y == 1])) 
+        acc = (TP + TN) / (TP + TN + FP + FN)
+        sens = TP / (TP + FN)
+        spec = TN / (TN + FP)
+        return acc, sens, spec
 
 
 
@@ -187,7 +193,7 @@ class LungSystem(object):
         logging.info("training:")
         x_train, y_train, x_val, y_val = dataset
 
-        best_val_accuracy = self.FLAGS.best_val_accuracy
+        best_val_hm = self.FLAGS.best_val_hm
         train_losses = []
         val_losses = []
         for e in range(self.FLAGS.epochs):
@@ -205,15 +211,20 @@ class LungSystem(object):
             logging.info("-"*80)
             train_losses += epoch_train_losses
             logging.info("Validating epoch %s of %s" % (e+1, self.FLAGS.epochs))
-            train_accuracy = self.accuracy(session, x_train, y_train)
+            train_accuracy, train_sens, train_spec = self.accuracy(session, x_train, y_train)
+            train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
             logging.info("Training loss: %s" % (np.mean(np.asarray(epoch_train_losses))))
-            logging.info("Training accuracy: %s" % (train_accuracy))
-            val_accuracy = self.accuracy(session, x_val, y_val)
+            logging.info("Training: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (train_accuracy, 
+            	train_sens, train_spec, train_hm))
+            val_accuracy, val_sens, val_spec = self.accuracy(session, x_val, y_val)
+            val_hm = (2*val_sens*val_spec) / (val_sens + val_spec)
             val_loss = self.test(session, x_val, y_val)[0]
             val_losses.append(val_loss)
             logging.info("Validation loss: %s" % (val_loss))
-            logging.info("Validation accuracy: %s" % (val_accuracy))
-            if val_accuracy > best_val_accuracy:
-                logging.info("NEW BEST VALIDATION ACCURACY: %s, SAVING!" % (val_accuracy))
-                best_val_accuracy = val_accuracy
-                self.saver.save(session, train_dir + 'model.weights')         
+            logging.info("Validation: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (val_accuracy, 
+            	val_sens, val_spec, val_hm))
+            if val_hm > best_val_hm:
+                logging.info("NEW BEST VALIDATION HM: %s, SAVING!" % (val_hm))
+                best_val_hm = val_hm
+                self.saver.save(session, train_dir + 'model.weights')  
+            logging.info("CURRENT BEST VALIDATION HM: %s" % (best_val_hm))
