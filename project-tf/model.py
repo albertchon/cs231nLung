@@ -67,7 +67,8 @@ class LungSystem(object):
         c1 = tf.layers.conv3d(b1, filters=16, kernel_size=[3, 3, 3], strides=[1,1,1], padding='same',
             kernel_initializer=tf.contrib.layers.xavier_initializer())
 
-        r1 = tf.nn.relu(c1)
+        #r1 = tf.nn.relu(c1)
+        r1 = tf.maximum(c1, self.FLAGS.leak*c1)
         
         m1 = tf.layers.max_pooling3d(r1, pool_size=2, strides=2, padding='valid')
 
@@ -76,20 +77,24 @@ class LungSystem(object):
         c2 = tf.layers.conv3d(b2, filters=16, kernel_size=[3, 3, 3], strides=[1, 1, 1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
 
-        r2 = tf.nn.relu(c2)
+        #r2 = tf.nn.relu(c2)
+        r2 = tf.maximum(c2, self.FLAGS.leak*c2)
+        
 
         m2 = tf.layers.max_pooling3d(r2, pool_size=2, strides=2, padding='valid')
 
         c3 = tf.layers.conv3d(m2, filters=1, kernel_size=[2,2,2], strides=[1,1,1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
         c3 = tf.reshape(c3, [-1, 16 * 32 * 32])
-        r3 = tf.nn.relu(c3)
+        #r3 = tf.nn.relu(c3)
+        r3 = tf.maximum(c3, self.FLAGS.leak*c3)
 
         aff1_W = tf.get_variable('aff1_W', shape=[16 * 32 * 32, 2048],
             initializer=tf.contrib.layers.xavier_initializer())
         aff1_b = tf.get_variable('aff1_b', shape=[2048])
         a1 = tf.matmul(r3, aff1_W) + aff1_b
-        a1 = tf.nn.relu(a1)
+        #a1 = tf.nn.relu(a1)
+        a1 = tf.maximum(a1, self.FLAGS.leak*a1)
         aff2_W = tf.get_variable('aff2_W', shape=[2048, 2],
             initializer=tf.contrib.layers.xavier_initializer())
         aff2_b = tf.get_variable('aff2_b', shape=[2])
