@@ -64,7 +64,7 @@ class LungSystem(object):
 
         b1 = tf.layers.batch_normalization(x, training=self.is_training)
 
-        c1 = tf.layers.conv3d(b1, filters=2, kernel_size=[6, 10, 10], strides=[2,2,2], padding='valid',
+        c1 = tf.layers.conv3d(b1, filters=16, kernel_size=[3, 3, 3], strides=[1,1,1], padding='same',
             kernel_initializer=tf.contrib.layers.xavier_initializer())
 
         r1 = tf.nn.relu(c1)
@@ -73,26 +73,28 @@ class LungSystem(object):
 
         b2 = tf.layers.batch_normalization(m1, training=self.is_training)
 
-        c2 = tf.layers.conv3d(b2, filters=2, kernel_size=[5, 8, 8], strides=[2, 2, 2], padding='valid',
+        c2 = tf.layers.conv3d(b2, filters=16, kernel_size=[3, 3, 3], strides=[1, 1, 1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
 
         r2 = tf.nn.relu(c2)
 
         m2 = tf.layers.max_pooling3d(r2, pool_size=2, strides=2, padding='valid')
 
-        c3 = tf.layers.conv3d(m2, filters=1, kernel_size=[2,2,2], strides=[1,1,1], padding='valid',
+        c3 = tf.layers.conv3d(m2, filters=1, kernel_size=[2,2,2], strides=[1,1,1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
-        print(c3)
-
-        c3 = tf.reshape(c3, [-1, 50])
-
+        c3 = tf.reshape(c3, [-1, 16 * 32 * 32])
         r3 = tf.nn.relu(c3)
 
-        aff1_W = tf.get_variable('aff1_W', shape=[50, 2],
-            initializer=tf.contrib.layers.xavier_initializer_conv2d())
-        aff1_b = tf.get_variable('aff1_b', shape=[2])
+        aff1_W = tf.get_variable('aff1_W', shape=[16 * 32 * 32, 2048],
+            initializer=tf.contrib.layers.xavier_initializer())
+        aff1_b = tf.get_variable('aff1_b', shape=[2048])
+        a1 = tf.matmul(r3, aff1_W) + aff1_b
+        a1 = tf.nn.relu(a1)
+        aff2_W = tf.get_variable('aff2_W', shape=[2048, 2],
+            initializer=tf.contrib.layers.xavier_initializer())
+        aff2_b = tf.get_variable('aff2_b', shape=[2])
 
-        self.predictions = tf.matmul(r3, aff1_W) + aff1_b
+        self.predictions = tf.matmul(a1, aff2_W) + aff2_b
 
     def setup_loss(self):
         """
@@ -117,7 +119,7 @@ class LungSystem(object):
         input_feed[self.labels] = y_train
         input_feed[self.is_training] = True        
 
-        print(x_train.shape)
+        #print(x_train.shape)
         # grad_norm, param_norm
         output_feed = [self.updates, self.loss]
 
@@ -126,26 +128,45 @@ class LungSystem(object):
 
         return outputs
 
-    def test(self, session, x_val, y_val):
+    def test(self, session, x, y):
         """
         in here you should compute a cost for your validation set
         and tune your hyperparameters according to the validation set performance
         :return:
         """
-        input_feed = {}
+        batch_indices = [0]
+        index = 0
+        while (True):
+            index += 1
+            if index == x.shape[0]:
+                if batch_indices[-1] != index:
+                    batch_indices.append(index)
+                break
+            if index % self.FLAGS.batch_size == 0:
+                batch_indices.append(index)
+        num_minibatches = len(batch_indices) - 1
+        losses = []
+        for b_end in range(1, num_minibatches + 1):
+            start = batch_indices[b_end-1]
+            end = batch_indices[b_end]
+            x_batch = x[start:end]
+            y_batch = y[start:end]  
 
-        # fill in this feed_dictionary like:
-        # input_feed['valid_x'] = valid_x
+            input_feed = {}
 
-        input_feed[self.images] = x_val
-        input_feed[self.labels] = y_val
-        input_feed[self.is_training] = False          
+            # fill in this feed_dictionary like:
+            # input_feed['valid_x'] = valid_x
 
-        output_feed = [self.loss]
+            input_feed[self.images] = x_batch
+            input_feed[self.labels] = y_batch
+            input_feed[self.is_training] = False          
 
-        outputs = session.run(output_feed, input_feed)
+            output_feed = [self.loss]
 
-        return outputs
+            outputs = session.run(output_feed, input_feed)
+            losses += outputs # TODO: consider weighing last
+
+        return [sum(losses)/float(len(losses))]
 
     def predict(self, session, x):
         """
@@ -168,16 +189,40 @@ class LungSystem(object):
         return outputs
 
     def accuracy(self, session, x, y):
-        outputs = self.predict(session, x)
-        probabilities = outputs[0]
-        pred = np.argmax(probabilities, axis=1)
-        TP = float(np.sum(y[y == 1] == pred[y == 1]))
-        TN = float(np.sum(y[y == 0] == pred[y == 0]))
-        FP = float(np.sum(y[y == 0] != pred[y == 0]))
-        FN = float(np.sum(y[y == 1] != pred[y == 1]))
-        acc = (TP + TN) / (TP + TN + FP + FN)
-        sens = TP / (TP + FN)
-        spec = TN / (TN + FP)
+
+        batch_indices = [0]
+        index = 0
+        while (True):
+            index += 1
+            if index == x.shape[0]:
+                if batch_indices[-1] != index:
+                    batch_indices.append(index)
+                break
+            if index % self.FLAGS.batch_size == 0:
+                batch_indices.append(index)
+        num_minibatches = len(batch_indices) - 1
+        TP = 0
+        TN = 0
+        FP = 0
+        FN = 0
+        for b_end in range(1, num_minibatches + 1):
+            start = batch_indices[b_end-1]
+            end = batch_indices[b_end]
+            x_batch = x[start:end]
+            y_batch = y[start:end]
+
+            outputs = self.predict(session, x_batch)
+            probabilities = outputs[0]
+            pred = np.argmax(probabilities, axis=1)
+            print(probabilities)
+            TP += np.sum(y_batch[y_batch == 1] == pred[y_batch == 1])
+            TN += np.sum(y_batch[y_batch == 0] == pred[y_batch == 0])
+            FP += np.sum(y_batch[y_batch == 0] != pred[y_batch == 0])
+            FN += np.sum(y_batch[y_batch == 1] != pred[y_batch == 1])
+
+        acc = float(TP + TN) / (TP + TN + FP + FN)
+        sens = float(TP) / (TP + FN)
+        spec = float(TN) / (TN + FP)
         return acc, sens, spec
 
 
@@ -208,14 +253,15 @@ class LungSystem(object):
             train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
             logging.info("Training loss: %s" % (np.mean(np.asarray(epoch_train_losses))))
             logging.info("Training: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (train_accuracy, 
-            	train_sens, train_spec, train_hm))
+                train_sens, train_spec, train_hm))
+
             val_accuracy, val_sens, val_spec = self.accuracy(session, x_val, y_val)
             val_hm = (2*val_sens*val_spec) / (val_sens + val_spec)
             val_loss = self.test(session, x_val, y_val)[0]
             val_losses.append(val_loss)
             logging.info("Validation loss: %s" % (val_loss))
             logging.info("Validation: accuracy = %s, sensitivity = %s, specificity = %s, HM = %s" % (val_accuracy, 
-            	val_sens, val_spec, val_hm))
+                val_sens, val_spec, val_hm))
             if val_hm > best_val_hm:
                 logging.info("NEW BEST VALIDATION HM: %s, SAVING!" % (val_hm))
                 best_val_hm = val_hm
