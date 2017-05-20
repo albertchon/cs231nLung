@@ -24,7 +24,7 @@ class LungSystem(object):
         # self.inputs_placeholder = tf.placeholder(tf.float32, shape=(None, self.FLAGS.output_size, self.FLAGS.embedding_size), name="x")
         # self.paragraph = tf.placeholder(shape=[None, self.FLAGS.output_size])
 
-        self.images = tf.placeholder(tf.float32, shape=[None, FLAGS.image_height, FLAGS.image_width, FLAGS.num_slices])
+        self.images = tf.placeholder(tf.float32, shape=[None, FLAGS.num_slices, FLAGS.image_height, FLAGS.image_width])
         self.labels = tf.placeholder(tf.int32, shape=[None])
         self.is_training = tf.placeholder(tf.bool)
         # ==== assemble pieces ====
@@ -63,44 +63,39 @@ class LungSystem(object):
         """
         model goes here
         """
-        c1 = tf.layers.conv2d(self.images, filters=self.FLAGS.conv1_filters, kernel_size=[3,3], padding='same', 
-            kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d())
-        print(c1)
-        b1 = tf.layers.batch_normalization(c1, training=self.is_training)
-        print(b1)
-        r1 = tf.nn.relu(b1)
-        print(r1)
+        x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
+
+        b1 = tf.layers.batch_normalization(x, training=self.is_training)
+
+        c1 = tf.layers.conv3d(b1, filters=2, kernel_size=[6, 10, 10], strides=[2,2,2], padding='valid',
+            kernel_initializer=tf.contrib.layers.xavier_initializer())
+
+        r1 = tf.nn.relu(c1)
         
-        m1 = tf.layers.max_pooling2d(r1, pool_size=[2,2], strides=2)
-        print(m1)
-        
-        c2 = tf.layers.conv2d(m1, filters=self.FLAGS.conv2_filters, kernel_size=[3,3], padding='same', 
-            kernel_initializer=tf.contrib.layers.xavier_initializer_conv2d())
-        print(c2)
-        b2 = tf.layers.batch_normalization(c2, training=self.is_training)
-        print(b2)
-        r2 = tf.nn.relu(b2)
-        print(r2)
+        m1 = tf.layers.max_pooling3d(r1, pool_size=2, strides=2, padding='valid')
 
-        m2 = tf.layers.max_pooling2d(r2, pool_size=[2,2], strides=2)
-        print(m2)
+        b2 = tf.layers.batch_normalization(m1, training=self.is_training)
 
-        m2 = tf.reshape(m2, shape=[-1, self.FLAGS.conv2_filters*self.FLAGS.image_height/4*self.FLAGS.image_width/4])
-        print(m2)
+        c2 = tf.layers.conv3d(b2, filters=2, kernel_size=[5, 8, 8], strides=[2, 2, 2], padding='valid',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
 
-        aff1_W = tf.get_variable('aff1_W', shape=[self.FLAGS.conv2_filters*self.FLAGS.image_width/4*self.FLAGS.image_width/4, self.FLAGS.aff_size], 
+        r2 = tf.nn.relu(c2)
+
+        m2 = tf.layers.max_pooling3d(r2, pool_size=2, strides=2, padding='valid')
+
+        c3 = tf.layers.conv3d(m2, filters=1, kernel_size=[2,2,2], strides=[1,1,1], padding='valid',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        print(c3)
+
+        c3 = tf.reshape(c3, [-1, 50])
+
+        r3 = tf.nn.relu(c3)
+
+        aff1_W = tf.get_variable('aff1_W', shape=[50, 2],
             initializer=tf.contrib.layers.xavier_initializer_conv2d())
-        aff1_b = tf.get_variable('aff1_b', shape=[self.FLAGS.aff_size])
+        aff1_b = tf.get_variable('aff1_b', shape=[2])
 
-        a1 = tf.nn.relu(tf.matmul(m2, aff1_W) + aff1_b)
-        print(a1)
-
-        aff2_W = tf.get_variable('aff2_W', shape=[self.FLAGS.aff_size, 2], 
-            initializer=tf.contrib.layers.xavier_initializer_conv2d())
-        aff2_b = tf.get_variable('aff2_b', shape=[2])
-
-        self.predictions = tf.matmul(a1, aff2_W) + aff2_b
-        print(self.predictions)
+        self.predictions = tf.matmul(r3, aff1_W) + aff1_b
 
     def setup_loss(self):
         """
@@ -125,6 +120,7 @@ class LungSystem(object):
         input_feed[self.labels] = y_train
         input_feed[self.is_training] = True        
 
+        print(x_train.shape)
         # grad_norm, param_norm
         output_feed = [self.updates, self.loss]
 
@@ -166,7 +162,7 @@ class LungSystem(object):
         # input_feed['valid_x'] = valid_x
 
         input_feed[self.images] = x
-        input_feed[self.is_training] = False          
+        input_feed[self.is_training] = False
 
         output_feed = [self.predictions]
 
@@ -181,7 +177,7 @@ class LungSystem(object):
         TP = float(np.sum(y[y == 1] == pred[y == 1]))
         TN = float(np.sum(y[y == 0] == pred[y == 0]))
         FP = float(np.sum(y[y == 0] != pred[y == 0]))
-        FN = float(np.sum(y[y == 1] != pred[y == 1])) 
+        FN = float(np.sum(y[y == 1] != pred[y == 1]))
         acc = (TP + TN) / (TP + TN + FP + FN)
         sens = TP / (TP + FN)
         spec = TN / (TN + FP)
