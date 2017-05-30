@@ -13,8 +13,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-tf.app.flags.DEFINE_float("best_val_hm", -1.0, "current best validation HM between sensitivity and specificity")
-tf.app.flags.DEFINE_string("model", 'cnn', "Type of model to use: linear or cnn")
+tf.app.flags.DEFINE_float("best_val_loss", float('inf'), "current best validation loss")
+tf.app.flags.DEFINE_string("model", 'linear', "Type of model to use: linear or cnn")
 tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixels or hog")
 tf.app.flags.DEFINE_integer("epochs", 10, "number of epochs")
 tf.app.flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
