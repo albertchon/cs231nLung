@@ -72,7 +72,7 @@ class LungSystem(object):
 
         m1 = tf.layers.max_pooling3d(r1, pool_size=2, strides=2, padding='valid')
 
-        shape = tf.shape(m1).as_list()
+        shape = tf.Tensor.get_shape(m1).as_list()
 
         m1 = tf.reshape(m1, [shape[0], shape[1]*shape[2]*shape[3]*shape[4] ])
         aff1_W = tf.get_variable('aff1_W', shape=[shape[1]*shape[2]*shape[3]*shape[4], 2048],
@@ -85,7 +85,7 @@ class LungSystem(object):
                                  initializer=tf.contrib.layers.xavier_initializer())
         aff2_b = tf.get_variable('aff2_b', shape=[2])
 
-        self.predictions = tf.matmul(a1, aff2_W) + aff2_b
+        self.predictions =  tf.nn.softmax(tf.matmul(a1, aff2_W) + aff2_b)
 
     def setup_loss(self):
         """

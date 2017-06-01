@@ -15,7 +15,7 @@
   <component name="ExecutionTargetManager" SELECTED_TARGET="default_target" />
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="train.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="train.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/train.py">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="0">
@@ -27,13 +27,72 @@
           </provider>
         </entry>
       </file>
+      <file leaf-file-name="model.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/model.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="15">
+              <caret line="48" column="33" lean-forward="true" selection-start-line="48" selection-start-column="33" selection-end-line="48" selection-end-column="33" />
+              <folding>
+                <element signature="e#0#11#0" expanded="true" />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="model2.py" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/model2.py">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="657">
+              <caret line="214" column="21" lean-forward="false" selection-start-line="214" selection-start-column="21" selection-end-line="214" selection-end-column="21" />
+              <folding>
+                <element signature="e#0#11#0" expanded="true" />
+                <marker date="1496125999000" expanded="true" signature="2396:3733" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="3760:4013" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="3769:3843" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1496125999000" expanded="true" signature="3883:4013" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="4065:4645" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="4074:4213" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1496125999000" expanded="true" signature="4247:4325" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="4463:4516" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="4681:5958" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="4690:4870" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1496125999000" expanded="true" signature="4938:5209" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="4997:5114" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="5330:5909" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="5525:5607" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="5994:6499" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="6003:6183" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+                <marker date="1496125999000" expanded="true" signature="6217:6295" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="6539:7859" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="6608:6879" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="6667:6784" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="7040:7652" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="8397:8831" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="9344:9472" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="9812:9936" ph="..." />
+                <marker date="1496125999000" expanded="true" signature="9979:10173" ph="..." />
+              </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="GANs-TensorFlow.ipynb" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/../../../assignment3_final/GANs-TensorFlow.ipynb">
+          <provider selected="true" editor-type-id="ipnb-editor">
+            <state>
+              <selected id="43" />
+            </state>
+          </provider>
+        </entry>
+      </file>
     </leaf>
   </component>
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/train.py" />
         <option value="$PROJECT_DIR$/model.py" />
+        <option value="$PROJECT_DIR$/train.py" />
+        <option value="$PROJECT_DIR$/model2.py" />
       </list>
     </option>
   </component>
@@ -44,8 +103,8 @@
     <sorting>DEFINITION_ORDER</sorting>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="-1910" />
-    <option name="y" value="43" />
+    <option name="x" value="-897" />
+    <option name="y" value="173" />
     <option name="width" value="937" />
     <option name="height" value="1023" />
   </component>
@@ -84,8 +143,8 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="-1910" y="43" width="937" height="1023" extended-state="0" />
-    <editor active="true" />
+    <frame x="-897" y="173" width="937" height="1023" extended-state="0" />
+    <editor active="false" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.07983762" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
@@ -140,13 +199,6 @@
     <watches-manager />
   </component>
   <component name="editorHistoryManager">
-    <entry file="file://$PROJECT_DIR$/model.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-2460">
-          <caret line="48" column="33" lean-forward="true" selection-start-line="48" selection-start-column="33" selection-end-line="48" selection-end-column="33" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/train.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="0">
@@ -154,6 +206,58 @@
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/model.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="15">
+          <caret line="48" column="33" lean-forward="true" selection-start-line="48" selection-start-column="33" selection-end-line="48" selection-end-column="33" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/model2.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="657">
+          <caret line="214" column="21" lean-forward="false" selection-start-line="214" selection-start-column="21" selection-end-line="214" selection-end-column="21" />
+          <folding>
+            <element signature="e#0#11#0" expanded="true" />
+            <marker date="1496125999000" expanded="true" signature="2396:3733" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="3760:4013" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="3769:3843" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1496125999000" expanded="true" signature="3883:4013" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="4065:4645" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="4074:4213" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1496125999000" expanded="true" signature="4247:4325" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="4463:4516" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="4681:5958" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="4690:4870" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1496125999000" expanded="true" signature="4938:5209" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="4997:5114" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="5330:5909" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="5525:5607" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="5994:6499" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="6003:6183" ph="&quot;&quot;&quot;...&quot;&quot;&quot;" />
+            <marker date="1496125999000" expanded="true" signature="6217:6295" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="6539:7859" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="6608:6879" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="6667:6784" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="7040:7652" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="8397:8831" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="9344:9472" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="9812:9936" ph="..." />
+            <marker date="1496125999000" expanded="true" signature="9979:10173" ph="..." />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/../../../assignment3_final/GANs-TensorFlow.ipynb">
+      <provider selected="true" editor-type-id="ipnb-editor">
+        <state>
+          <selected id="43" />
         </state>
       </provider>
     </entry>
