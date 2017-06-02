@@ -14,7 +14,7 @@ starting=True
 logging.basicConfig(level=logging.INFO)
 
 tf.app.flags.DEFINE_float("best_val_loss", 1.0, "current best validation loss")
-tf.app.flags.DEFINE_string("model", 'naive', "Type of model to use: linear or cnn or simplecnn")
+tf.app.flags.DEFINE_string("model", 'simplecnn', "Type of model to use: linear or cnn or simplecnn")
 tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixels or hog")
 tf.app.flags.DEFINE_integer("epochs", 15, "number of epochs")
 tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
