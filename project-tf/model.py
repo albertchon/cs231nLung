@@ -57,7 +57,21 @@ class LungSystem(object):
         self.updates = self.optimizer.minimize(self.loss)
         print('setting up saver')
         self.saver = tf.train.Saver()
-
+    def _activation_summary(x):  #from https://github.com/tensorflow/models/blob/master/tutorials/image/cifar10/cifar10.py
+        """Helper to create summaries for activations.
+          Creates a summary that provides a histogram of activations.
+          Creates a summary that measures the sparsity of activations.
+          Args:
+            x: Tensor
+          Returns:
+            nothing
+          """
+        # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
+        # session. This helps the clarity of presentation on tensorboard.
+        tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
+        tf.summary.histogram(tensor_name + '/activations', x)
+        tf.summary.scalar(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+    
     def leaky_relu(self, x):
         return tf.maximum(x, self.FLAGS.leak*x)
     
@@ -203,7 +217,7 @@ class LungSystem(object):
             kernel_initializer=tf.contrib.layers.xavier_initializer(), activation=self.leaky_relu)
         #? x 64 x 128 x 128 x 8
         
-        
+        tf.summary.histogram('conv1', c1)
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 32 x 64 x 64 x 8
         b2 = tf.layers.batch_normalization(m1, training=self.is_training)
@@ -212,13 +226,14 @@ class LungSystem(object):
         c2 = tf.layers.conv3d(b2, filters=16, kernel_size=[3, 3, 3], strides=[1,1,1], padding='same',
             kernel_initializer=tf.contrib.layers.xavier_initializer(), activation=self.leaky_relu)
         #? x 32 x 64 x 64 x 16
-        
+        tf.summary.histogram('conv2', c2)
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
         #? x 16 x 32 x 32 x 16
         
         m2 = tf.reshape(m2, (-1, 16*32*32*16))
         
         a1 = tf.layers.dense(m2, 256, activation=self.leaky_relu)
+        tf.summary.histogram('affine1', a1)
         a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
         
         self.predictions = tf.layers.dense(a1, 2)
@@ -278,7 +293,8 @@ class LungSystem(object):
             # self.start_answer (N)
             self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)      
 
-    def optimize(self, session, x_train, y_train):
+    def optimize(self, session, x_train, y_train, train_writer):
+        
         """
         Takes in actual data to optimize your model
         This method is equivalent to a step() function
@@ -294,12 +310,15 @@ class LungSystem(object):
 
         #print(x_train.shape)
         # grad_norm, param_norm
-        output_feed = [self.updates, self.loss]
-
+        merged = tf.summary.merge_all()
+        
+        output_feed = [self.updates, self.loss, merged]
+        
+        
 
         outputs = session.run(output_feed, input_feed)
-
-        return outputs
+        train_writer.add_summary(outputs[2], 3)
+        return outputs[:2]
 
     def test(self, session, x, y):
         """
@@ -409,6 +428,7 @@ class LungSystem(object):
         best_val_loss = self.FLAGS.best_val_loss
         train_losses = []
         val_losses = []
+        train_writer = tf.summary.FileWriter('summaries', session.graph) # this is for training only
         for e in range(self.FLAGS.epochs):
             logging.info("="*80)
             logging.info("Epoch %s of %s" % (e+1, self.FLAGS.epochs))
@@ -418,11 +438,14 @@ class LungSystem(object):
                 batch_indices = random.sample(range(len(x_train)), self.FLAGS.batch_size)
                 x_train_batch = x_train[batch_indices]
                 y_train_batch = y_train[batch_indices]
-                _, train_loss = self.optimize(session, x_train_batch, y_train_batch)
+                _, train_loss = self.optimize(session, x_train_batch, y_train_batch, train_writer)
                 epoch_train_losses.append(train_loss)
                 logging.info("batch %s/%s training loss: %s" % (i+1, num_batches, train_loss))
             logging.info("-"*80)
             train_losses += epoch_train_losses
+            
+            
+            
             logging.info("Validating epoch %s of %s" % (e+1, self.FLAGS.epochs))
             train_accuracy, train_sens, train_spec = self.accuracy(session, x_train, y_train)
             train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
