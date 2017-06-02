@@ -206,7 +206,6 @@ class LungSystem(object):
         
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 32 x 64 x 64 x 8
-        
         b2 = tf.layers.batch_normalization(m1, training=self.is_training)
         
         
@@ -215,9 +214,9 @@ class LungSystem(object):
         #? x 32 x 64 x 64 x 16
         
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
-        #? x 16 x 32 x 32 x 16
+        #? x 16 x 32 x 32 x 16 < no
         
-        m2 = tf.reshape(m2, (-1, 16*32*32*16))
+        m2 = tf.reshape(m2, (-1, 32*64*64*8))
         
         a1 = tf.layers.dense(m2, 256, activation=self.leaky_relu)
         a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)

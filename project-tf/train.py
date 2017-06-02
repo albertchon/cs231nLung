@@ -13,11 +13,11 @@ import logging
 starting=True
 logging.basicConfig(level=logging.INFO)
 
-tf.app.flags.DEFINE_float("best_val_loss", 0.593, "current best validation loss")
+tf.app.flags.DEFINE_float("best_val_loss", 1.0, "current best validation loss")
 tf.app.flags.DEFINE_string("model", 'naive', "Type of model to use: linear or cnn or simplecnn")
 tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixels or hog")
 tf.app.flags.DEFINE_integer("epochs", 15, "number of epochs")
-tf.app.flags.DEFINE_float("learning_rate", 0.00001, "Learning rate.")
+tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
 tf.app.flags.DEFINE_float("leak", 0.01, "Leakiness")
 tf.app.flags.DEFINE_float("dropout", 0.0, "dropout prob")
 tf.app.flags.DEFINE_integer("num_slices", 64, "number of CT slices for each patient")
@@ -74,7 +74,7 @@ def main(_):
     x = np.zeros((len(patient_images), FLAGS.num_slices, FLAGS.image_height, FLAGS.image_width), dtype=np.float32)
     y = np.zeros(len(patient_images), dtype=np.int32)
     
-    patient_keys = list(patient_images.keys())
+    patient_keys = sorted(list(patient_images.keys()))
     for i in range(len(patient_images)):
         patient = patient_keys[i]
         x[i] = patient_images[patient]
@@ -85,7 +85,7 @@ def main(_):
     num_train = int(np.round(num_total * FLAGS.train_size))
     indices = list(range(num_total))
     random.seed(4783)
-    #random.shuffle(indices)
+    random.shuffle(indices)
     #test_indices = indices[:num_test]
     val_indices = indices[:num_val]
     train_indices = indices[num_val:]
