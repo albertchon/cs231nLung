@@ -19,6 +19,7 @@ tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixel
 tf.app.flags.DEFINE_integer("epochs", 10, "number of epochs")
 tf.app.flags.DEFINE_float("learning_rate", 0.0001, "Learning rate.")
 tf.app.flags.DEFINE_float("leak", 0.01, "Leakiness")
+tf.app.flags.DEFINE_float("dropout", 0.0, "dropout prob")
 tf.app.flags.DEFINE_integer("num_slices", 64, "number of CT slices for each patient")
 tf.app.flags.DEFINE_integer("image_height", 128, "height of each slice in pixels")
 tf.app.flags.DEFINE_integer("image_width", 128, "width of each slice in pixels")

@@ -30,6 +30,10 @@ class LungSystem(object):
                 self.setup_linear_system()
             elif FLAGS.model == 'simplecnn':
                 self.setup_simplecnn()
+            elif FLAGS.model == 'enet':
+                self.setup_enet()                
+            elif FLAGS.model == 'googlenet':
+                self.setup_googlenet()
             else:
                 self.setup_cnn_system()
             print('setting up loss')
@@ -61,16 +65,113 @@ class LungSystem(object):
         b = tf.get_variable('b', shape=[2])
         self.predictions = tf.matmul(x, W) + b
    
+    def prelu(self, _x):
+        alphas = tf.get_variable('alpha', _x.get_shape()[-1], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
+        pos = tf.nn.relu(_x)
+        neg = alphas * (_x - abs(_x)) * 0.5
+        return pos + neg
+    
+    def inception_a(self, x):
+        
+
+    def setup_googlenet(self):
+        x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
+        x = tf.layers.batch_normalization(x, training=self.is_training)
+        #? x 64 x 128 x 128 x 1
+        
+        c1 = tf.layers.conv3d(x, filters=64, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        c1 = tf.layers.batch_normalization(c1, training=self.is_training)
+        c1 = self.prelu(c1)
+        #? x 32 x 64 x 64 x 64
+        m1 = tf.layers.max_pooling3d(b1, pool_size=2, strides=2, padding='valid')
+        #? x 16 x 32 x 32 x 64
+        c2 = tf.layers.conv3d(m1, filters=128, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #? x 16 x 32 x 32 x 128
+        c2 = tf.layers.batch_normalization(c2, training=self.is_training)
+        c2 = self.prelu(c2)
+        m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
+        #? x 8 x 16 x 16 x 128
+    
+    
+    ''' 
+    def setup_enet(self):
+        x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
+        b1 = tf.layers.batch_normalization(x, training=self.is_training)
+        
+        c1 = tf.layers.conv3d(b1, filters=15, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #? x 32 x 64 x 64 x 15
+        
+        m1 = tf.layers.max_pooling3d(b1, pool_size=2, strides=2, padding='valid')
+        #? x 32 x 64 x 64 x 1
+        
+        i1 = tf.concat([c1, m1], axis=-1)
+        #? x 32 x 64 x 64 x 16
+        
+        r = tf.layers.conv3d(i1, filters=8, kernel_size=[1,1,1], strides=[1,1,1], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #? x 32 x 64 x 64 x 8
+        r = tf.layers.batch_normalization(r, training=self.is_training)
+        r = self.prelu(r)
+        r = tf.layers.conv3d(r, filters=8, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())        
+        r = tf.layers.batch_normalization(r, training=self.is_training)
+        r = self.prelu(r)
+        #? x 16 x 32 x 32 x 8
+        r = tf.layers.conv3d(r, filters=16, kernel_size=[1,1,1], strides=[1,1,1], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #? x 16 x 32 x 32 x 16
+        r = tf.layers.dropout(r, rate=self.FLAGS.dropout, training=self.is_training)
+        r = self.prelu(r)
+        
+        l = tf.layers.max_pooling3d(i1, pool_size=2, strides=2, padding='same')
+        
+        neck = r + l
+        neck = self.prelu(neck)
+        #? x 16 x 32 x 32 x 16
+    '''  
+        
+        
+        
+        
+        
+        
+        
+        
+   
     def setup_simplecnn(self):
+        #? x 64 x 128 x 128 x 1
         x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
 
+        
         b1 = tf.layers.batch_normalization(x, training=self.is_training)
 
+        
         c1 = tf.layers.conv3d(b1, filters=8, kernel_size=[3, 3, 3], strides=[1,1,1], padding='same',
             kernel_initializer=tf.contrib.layers.xavier_initializer(), activation=self.leaky_relu)
+        #? x 64 x 128 x 128 x 8
+        
+        
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
-        m1 = tf.reshape(m1, (-1, 32*64*64*8))
-        a1 = tf.layers.dense(m1, 128, activation=self.leaky_relu)
+        #? x 32 x 64 x 64 x 8
+        
+        b2 = tf.layers.batch_normalization(m1, training=self.is_training)
+        
+        
+        c2 = tf.layers.conv3d(b2, filters=16, kernel_size=[3, 3, 3], strides=[1,1,1], padding='same',
+            kernel_initializer=tf.contrib.layers.xavier_initializer(), activation=self.leaky_relu)
+        #? x 32 x 64 x 64 x 16
+        
+        m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
+        #? x 16 x 32 x 32 x 16
+        
+        m2 = tf.reshape(m2, (-1, 16*32*32*16))
+        
+        a1 = tf.layers.dense(m2, 256, activation=self.leaky_relu)
+        a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
+        
         self.predictions = tf.layers.dense(a1, 2)
                          
 
