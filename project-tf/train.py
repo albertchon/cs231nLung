@@ -13,11 +13,11 @@ import logging
 starting=True
 logging.basicConfig(level=logging.INFO)
 
-tf.app.flags.DEFINE_float("best_val_loss", float('inf'), "current best validation loss")
-tf.app.flags.DEFINE_string("model", 'simplecnn', "Type of model to use: linear or cnn or simplecnn")
+tf.app.flags.DEFINE_float("best_val_loss", 0.593, "current best validation loss")
+tf.app.flags.DEFINE_string("model", 'naive', "Type of model to use: linear or cnn or simplecnn")
 tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixels or hog")
 tf.app.flags.DEFINE_integer("epochs", 15, "number of epochs")
-tf.app.flags.DEFINE_float("learning_rate", 0.0003, "Learning rate.")
+tf.app.flags.DEFINE_float("learning_rate", 0.00001, "Learning rate.")
 tf.app.flags.DEFINE_float("leak", 0.01, "Leakiness")
 tf.app.flags.DEFINE_float("dropout", 0.0, "dropout prob")
 tf.app.flags.DEFINE_integer("num_slices", 64, "number of CT slices for each patient")
@@ -48,6 +48,7 @@ def initialize_model(session, model, train_dir):
 def main(_):
     INPUT_FOLDER = './npy3d-data/'
     patients = os.listdir(INPUT_FOLDER)
+    patients.sort()
     patient_images = {}
     labels = {}
 
@@ -84,7 +85,7 @@ def main(_):
     num_train = int(np.round(num_total * FLAGS.train_size))
     indices = list(range(num_total))
     random.seed(4783)
-    random.shuffle(indices)
+    #random.shuffle(indices)
     #test_indices = indices[:num_test]
     val_indices = indices[:num_val]
     train_indices = indices[num_val:]
@@ -100,9 +101,8 @@ def main(_):
     y_train = y[train_indices]
     if starting:
         indices = list(range(num_train))
-        random.shuffle(indices)
-        x_train = x_train[indices[:128]]
-        y_train = y_train[indices[:128]]
+        x_train = x_train[:128]
+        y_train = y_train[:128]
     x_val = x[val_indices]
     y_val = y[val_indices]
     dataset = (x_train, y_train, x_val, y_val)

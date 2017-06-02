@@ -16,6 +16,7 @@ logging.basicConfig(level=logging.INFO)
 class LungSystem(object):
     def __init__(self, FLAGS):
         self.FLAGS = FLAGS
+        self.prelu_counter = 0
 
         # ==== set up placeholder tokens ========
         # self.inputs_placeholder = tf.placeholder(tf.float32, shape=(None, self.FLAGS.output_size, self.FLAGS.embedding_size), name="x")
@@ -34,6 +35,8 @@ class LungSystem(object):
                 self.setup_enet()                
             elif FLAGS.model == 'googlenet':
                 self.setup_googlenet()
+            elif FLAGS.model == 'naive':
+                self.setup_naive()
             else:
                 self.setup_cnn_system()
             print('setting up loss')
@@ -56,7 +59,12 @@ class LungSystem(object):
         self.saver = tf.train.Saver()
 
     def leaky_relu(self, x):
-        return tf.maximum(x, self.FLAGS.leak*x)    
+        return tf.maximum(x, self.FLAGS.leak*x)
+    
+    def setup_naive(self):
+        pred = tf.zeros_like(self.images)
+        b = tf.get_variable('b', shape=[2])
+        self.predictions = pred[:,0,0,:2]*b
     
     def setup_linear_system(self):
         x = tf.reshape(self.images, shape=[-1, self.FLAGS.num_slices*self.FLAGS.image_height*self.FLAGS.image_width])
@@ -66,12 +74,31 @@ class LungSystem(object):
         self.predictions = tf.matmul(x, W) + b
    
     def prelu(self, _x):
-        alphas = tf.get_variable('alpha', _x.get_shape()[-1], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
+        alphas = tf.get_variable('alpha'+str(self.prelu_counter), _x.get_shape()[-1], initializer=tf.constant_initializer(0.0), dtype=tf.float32)
         pos = tf.nn.relu(_x)
         neg = alphas * (_x - abs(_x)) * 0.5
+        self.prelu_counter += 1
         return pos + neg
     
-    def inception_a(self, x):
+    def inception_a(self, x, filters, increase_layers=True):
+        if increase_layers:
+            filters //= 2
+        else:
+            filters //= 4
+        c1 = tf.layers.conv3d(x, filters=filters, kernel_size=[1,1,1], strides=[1,1,1], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        c1 = tf.layers.batch_normalization(c1, training=self.is_training)
+        c1 = self.leaky_relu(c1)
+        c3 = tf.layers.conv3d(x, filters=2*filters, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())        
+        c3 = tf.layers.batch_normalization(c3, training=self.is_training)
+        c3 = self.leaky_relu(c3)
+        
+        c5 = tf.layers.conv3d(x, filters=filters, kernel_size=[5,5,5], strides=[1,1,1], padding='same',
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())        
+        c5 = tf.layers.batch_normalization(c5, training=self.is_training)
+        c5 = self.leaky_relu(c5)
+        return tf.concat([c1, c3, c5], axis=-1)
         
 
     def setup_googlenet(self):
@@ -79,20 +106,43 @@ class LungSystem(object):
         x = tf.layers.batch_normalization(x, training=self.is_training)
         #? x 64 x 128 x 128 x 1
         
-        c1 = tf.layers.conv3d(x, filters=64, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
+        c1 = tf.layers.conv3d(x, filters=32, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
         c1 = tf.layers.batch_normalization(c1, training=self.is_training)
-        c1 = self.prelu(c1)
-        #? x 32 x 64 x 64 x 64
-        m1 = tf.layers.max_pooling3d(b1, pool_size=2, strides=2, padding='valid')
-        #? x 16 x 32 x 32 x 64
-        c2 = tf.layers.conv3d(m1, filters=128, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
+        c1 = self.leaky_relu(c1)
+        #? x 32 x 64 x 64 x 32
+        m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
+        #? x 16 x 32 x 32 x 32
+        c2 = tf.layers.conv3d(m1, filters=64, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
-        #? x 16 x 32 x 32 x 128
+        #? x 16 x 32 x 32 x 64
         c2 = tf.layers.batch_normalization(c2, training=self.is_training)
-        c2 = self.prelu(c2)
+        c2 = self.leaky_relu(c2)
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
+        #? x 8 x 16 x 16 x 64
+        
+        i1 = self.inception_a(m2, 64)
         #? x 8 x 16 x 16 x 128
+        i2 = self.inception_a(i1, 128, False)
+        #? x 8 x 16 x 16 x 128
+        m3 = tf.layers.max_pooling3d(i2, pool_size=2, strides=2, padding='valid')
+        #? x 4 x 8 x 8 x 128
+        i3 = self.inception_a(m3, 128)
+        #? x 4 x 8 x 8 x 256
+        i4 = self.inception_a(i3, 256, False)
+        #? x 4 x 8 x 8 x 256
+        m4 = tf.layers.max_pooling3d(i4, pool_size=2, strides=2, padding='valid')  
+        #? x 2 x 4 x 4 x 256
+        i5 = self.inception_a(m4, 256)
+        #? x 2 x 4 x 4 x 512
+        i6 = self.inception_a(i5, 512, False)
+        #? x 2 x 4 x 4 x 512
+        a1 = tf.layers.average_pooling3d(i6, pool_size = [2,4,4], strides=[1,1,1])
+        #? x 1 x 1 x 1 x 512
+        a1 = tf.reshape(a1, [-1, 512])
+        a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
+        self.predictions = tf.layers.dense(a1, 2)
+        
     
     
     ''' 
@@ -354,6 +404,8 @@ class LungSystem(object):
     def train(self, session, dataset, train_dir):
         logging.info("training:")
         x_train, y_train, x_val, y_val = dataset
+        print('X TRAIN SHAPE: %s' % x_train.shape[0])
+        print('y TRAIN SHAPE: %s' % y_train.shape[0])
 
         best_val_loss = self.FLAGS.best_val_loss
         train_losses = []
