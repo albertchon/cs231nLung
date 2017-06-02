@@ -28,6 +28,8 @@ class LungSystem(object):
         with tf.variable_scope("lung_sys"):
             if FLAGS.model == 'linear':
                 self.setup_linear_system()
+            elif FLAGS.model == 'simplecnn':
+                self.setup_simplecnn()
             else:
                 self.setup_cnn_system()
             print('setting up loss')
@@ -49,12 +51,28 @@ class LungSystem(object):
         print('setting up saver')
         self.saver = tf.train.Saver()
 
+    def leaky_relu(self, x):
+        return tf.maximum(x, self.FLAGS.leak*x)    
+    
     def setup_linear_system(self):
         x = tf.reshape(self.images, shape=[-1, self.FLAGS.num_slices*self.FLAGS.image_height*self.FLAGS.image_width])
         W = tf.get_variable('W', shape=[self.FLAGS.num_slices*self.FLAGS.image_height*self.FLAGS.image_width, 2], 
             initializer=tf.contrib.layers.xavier_initializer())
         b = tf.get_variable('b', shape=[2])
         self.predictions = tf.matmul(x, W) + b
+   
+    def setup_simplecnn(self):
+        x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
+
+        b1 = tf.layers.batch_normalization(x, training=self.is_training)
+
+        c1 = tf.layers.conv3d(b1, filters=8, kernel_size=[3, 3, 3], strides=[1,1,1], padding='same',
+            kernel_initializer=tf.contrib.layers.xavier_initializer(), activation=self.leaky_relu)
+        m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
+        m1 = tf.reshape(m1, (-1, 32*64*64*8))
+        a1 = tf.layers.dense(m1, 128, activation=self.leaky_relu)
+        self.predictions = tf.layers.dense(a1, 2)
+                         
 
     def setup_cnn_system(self):
         """
@@ -256,7 +274,10 @@ class LungSystem(object):
             logging.info("Validating epoch %s of %s" % (e+1, self.FLAGS.epochs))
             train_accuracy, train_sens, train_spec = self.accuracy(session, x_train, y_train)
             train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
-            logging.info("Training loss: %s" % (np.mean(np.asarray(epoch_train_losses))))
+            
+            
+            train_loss = self.test(session, x_train, y_train)[0]
+            logging.info("Training loss: %s" % (train_loss))
             logging.info("Training: accuracy = %s, sensitivity = %s, specificity = %s" % (train_accuracy, 
                 train_sens, train_spec))
 
