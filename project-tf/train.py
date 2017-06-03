@@ -4,20 +4,22 @@ import sys
 import tensorflow as tf
 
 import numpy as np
-from model import LungSystem
+from model2 import LungSystem
 from os.path import join as pjoin
 import random
 
 
 import logging
-starting=True
+starting=False
 logging.basicConfig(level=logging.INFO)
 
-tf.app.flags.DEFINE_float("best_val_loss", 1.0, "current best validation loss")
-tf.app.flags.DEFINE_string("model", 'simplecnn', "Type of model to use: linear or cnn or simplecnn")
+tf.app.flags.DEFINE_bool("save_best_train_loss", False, "whether save based on tr or val loss")
+tf.app.flags.DEFINE_float("best_val_loss", float('inf'), "current best val loss")
+tf.app.flags.DEFINE_float("best_train_loss", float('inf'), "current best train loss")
+tf.app.flags.DEFINE_string("model", 'asu', "Type of model to use: linear or cnn or simplecnn")
 tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixels or hog")
-tf.app.flags.DEFINE_integer("epochs", 15, "number of epochs")
-tf.app.flags.DEFINE_float("learning_rate", 0.01, "Learning rate.")
+tf.app.flags.DEFINE_integer("epochs", 100, "number of epochs")
+tf.app.flags.DEFINE_float("learning_rate", 0.0003, "Learning rate.")
 tf.app.flags.DEFINE_float("leak", 0.01, "Leakiness")
 tf.app.flags.DEFINE_float("dropout", 0.0, "dropout prob")
 tf.app.flags.DEFINE_integer("num_slices", 64, "number of CT slices for each patient")

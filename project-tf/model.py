@@ -293,7 +293,7 @@ class LungSystem(object):
             # self.start_answer (N)
             self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)      
 
-    def optimize(self, session, x_train, y_train, train_writer):
+    def optimize(self, session, x_train, y_train):
         
         """
         Takes in actual data to optimize your model
@@ -310,14 +310,14 @@ class LungSystem(object):
 
         #print(x_train.shape)
         # grad_norm, param_norm
-        merged = tf.summary.merge_all()
+        # merged = tf.summary.merge_all()
         
-        output_feed = [self.updates, self.loss, merged]
+        output_feed = [self.updates, self.loss]
         
         
 
         outputs = session.run(output_feed, input_feed)
-        train_writer.add_summary(outputs[2], 3)
+        # train_writer.add_summary(outputs[2], 3)
         return outputs[:2]
 
     def test(self, session, x, y):
@@ -428,7 +428,7 @@ class LungSystem(object):
         best_val_loss = self.FLAGS.best_val_loss
         train_losses = []
         val_losses = []
-        train_writer = tf.summary.FileWriter('summaries', session.graph) # this is for training only
+        # train_writer = tf.summary.FileWriter('summaries', session.graph) # this is for training only
         for e in range(self.FLAGS.epochs):
             logging.info("="*80)
             logging.info("Epoch %s of %s" % (e+1, self.FLAGS.epochs))
@@ -438,7 +438,7 @@ class LungSystem(object):
                 batch_indices = random.sample(range(len(x_train)), self.FLAGS.batch_size)
                 x_train_batch = x_train[batch_indices]
                 y_train_batch = y_train[batch_indices]
-                _, train_loss = self.optimize(session, x_train_batch, y_train_batch, train_writer)
+                _, train_loss = self.optimize(session, x_train_batch, y_train_batch)
                 epoch_train_losses.append(train_loss)
                 logging.info("batch %s/%s training loss: %s" % (i+1, num_batches, train_loss))
             logging.info("-"*80)
