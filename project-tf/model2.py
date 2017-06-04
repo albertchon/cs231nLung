@@ -171,27 +171,32 @@ class LungSystem(object):
                               kernel_initializer=tf.contrib.layers.xavier_initializer(),
                              activation=self.leaky_relu)
         #? x 8 x 16 x 16 x 64
-        
+        tf.summary.histogram('conv1', c1)
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 4 x 8 x 8 x 64
         
         c2 = tf.layers.conv3d(m1, filters=64, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer(),
                              activation=self.leaky_relu)
+        tf.summary.histogram('conv2', c2)
         #? x 4 x 8 x 8 x 64
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
         #? x 2 x 4 x 4 x 64
         c3 = tf.layers.conv3d(m2, filters=128, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer(),
                              activation=self.leaky_relu)
+        tf.summary.histogram('conv3', c3)
         #? x 1 x 2 x 2 x 128
         c4 = tf.layers.conv3d(c3, filters=256, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer(),
                              activation=self.leaky_relu)
+        tf.summary.histogram('conv4', c4)
         #? x 1 x 2 x 2 x 256
         c4 = tf.reshape(c4, (-1, 1024))
         a1 = tf.layers.dense(c4, 512, activation=self.leaky_relu)
+        tf.summary.histogram('affine1', a1)
         a2 = tf.layers.dense(a1, 256, activation=self.leaky_relu)
+        tf.summary.histogram('affine2', a2)
         self.predictions = tf.layers.dense(a2,2)
         
         
@@ -287,7 +292,8 @@ class LungSystem(object):
         """
         with vs.variable_scope("loss"):
             # self.start_answer (N)
-            self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)      
+            self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)
+            tf.summary.scalar('loss', self.loss)
 
     def optimize(self, session, x_train, y_train):
         
@@ -313,10 +319,9 @@ class LungSystem(object):
         
 
         outputs = session.run(output_feed, input_feed)
-        # train_writer.add_summary(outputs[2], 3)
-        return outputs[:2]
+        return outputs
 
-    def test(self, session, x, y):
+    def test(self, session, x, y, train_writer, e, merged, addBool):
         """
         in here you should compute a cost for your validation set
         and tune your hyperparameters according to the validation set performance
@@ -347,11 +352,16 @@ class LungSystem(object):
             input_feed[self.images] = x_batch
             input_feed[self.labels] = y_batch
             input_feed[self.is_training] = False          
-
-            output_feed = [self.loss]
+    
+            
+            
+            
+            output_feed = [self.loss, merged]
 
             outputs = session.run(output_feed, input_feed)
-            losses += outputs # TODO: consider weighing last
+            if addBool:
+                train_writer.add_summary(outputs[1], e)
+            losses.append(outputs[0]) # TODO: consider weighing last
         return [sum(losses)/float(len(losses))]
 
     def predict(self, session, x):
@@ -424,6 +434,7 @@ class LungSystem(object):
 
         train_losses = []
         val_losses = []
+        merged = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter('summaries', session.graph) # this is for training only
         for e in range(self.FLAGS.epochs):
             logging.info("="*80)
@@ -436,7 +447,7 @@ class LungSystem(object):
                 y_train_batch = y_train[batch_indices]
                 _, train_loss = self.optimize(session, x_train_batch, y_train_batch)
                 epoch_train_losses.append(train_loss)
-                logging.info("batch %s/%s training loss: %s" % (i+1, num_batches, train_loss))
+                logging.info("batch %s/%s training loss: %s" % (i+1, num_batches , train_loss))
             logging.info("-"*80)
             train_losses += epoch_train_losses
             
@@ -447,13 +458,14 @@ class LungSystem(object):
             train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
             
             
-            train_loss = self.test(session, x_train, y_train)[0]
+            train_loss = self.test(session, x_train, y_train, train_writer, e, merged, True)[0]
+            
             logging.info("Training loss: %s" % (train_loss))
             logging.info("Training: accuracy = %s, sensitivity = %s, specificity = %s" % (train_accuracy, 
                 train_sens, train_spec))
 
             val_accuracy, val_sens, val_spec = self.accuracy(session, x_val, y_val)
-            val_loss = self.test(session, x_val, y_val)[0]
+            val_loss = self.test(session, x_val, y_val, train_writer, e, merged, False)[0]
             val_losses.append(val_loss)
             logging.info("Validation loss: %s" % (val_loss))
             logging.info("Validation: accuracy = %s, sensitivity = %s, specificity = %s" % (val_accuracy, 
