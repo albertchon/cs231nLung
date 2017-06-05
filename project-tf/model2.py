@@ -106,16 +106,19 @@ class LungSystem(object):
         else:
             filters //= 4
         c1 = tf.layers.conv3d(x, filters=filters, kernel_size=[1,1,1], strides=[1,1,1], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c1 = tf.layers.batch_normalization(c1, training=self.is_training)
         c1 = self.leaky_relu(c1)
         c3 = tf.layers.conv3d(x, filters=2*filters, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())        
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)        
         #c3 = tf.layers.batch_normalization(c3, training=self.is_training)
         c3 = self.leaky_relu(c3)
         
         c5 = tf.layers.conv3d(x, filters=filters, kernel_size=[5,5,5], strides=[1,1,1], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())        
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)        
         #c5 = tf.layers.batch_normalization(c5, training=self.is_training)
         c5 = self.leaky_relu(c5)
         return tf.concat([c1, c3, c5], axis=-1)
@@ -127,14 +130,16 @@ class LungSystem(object):
         #? x 64 x 128 x 128 x 1
         
         c1 = tf.layers.conv3d(x, filters=32, kernel_size=[7,7,7], strides=[2,2,2], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c1 = tf.layers.batch_normalization(c1, training=self.is_training)
         c1 = self.leaky_relu(c1)
         #? x 32 x 64 x 64 x 32
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 16 x 32 x 32 x 32
         c2 = tf.layers.conv3d(m1, filters=64, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #? x 16 x 32 x 32 x 64
         #c2 = tf.layers.batch_normalization(c2, training=self.is_training)
         c2 = self.leaky_relu(c2)
@@ -143,25 +148,27 @@ class LungSystem(object):
         
         i1 = self.inception_a(m2, 64)
         #? x 8 x 16 x 16 x 128
-        #i2 = self.inception_a(i1, 128, False)
+        i2 = self.inception_a(i1, 128, False)
         #? x 8 x 16 x 16 x 128
-        m3 = tf.layers.max_pooling3d(i1, pool_size=2, strides=2, padding='valid')
+        m3 = tf.layers.max_pooling3d(i2, pool_size=2, strides=2, padding='valid')
         #? x 4 x 8 x 8 x 128
         i3 = self.inception_a(m3, 128)
         #? x 4 x 8 x 8 x 256
-        #i4 = self.inception_a(i3, 256, False)
+        i4 = self.inception_a(i3, 256, False)
         #? x 4 x 8 x 8 x 256
-        #m4 = tf.layers.max_pooling3d(i3, pool_size=2, strides=2, padding='valid')  
+        m4 = tf.layers.max_pooling3d(i4, pool_size=2, strides=2, padding='valid')  
         #? x 2 x 4 x 4 x 256
-        #i5 = self.inception_a(m4, 256)
+        i5 = self.inception_a(m4, 256)
         #? x 2 x 4 x 4 x 512
-        #i6 = self.inception_a(i5, 512, False)
+        i6 = self.inception_a(i5, 512, False)
         #? x 2 x 4 x 4 x 512
-        a1 = tf.layers.average_pooling3d(i3, pool_size = [4,8,8], strides=[1,1,1])
-        #? x 1 x 1 x 1 x 256
-        a1 = tf.reshape(a1, [-1, 256])
+        a1 = tf.layers.average_pooling3d(i6, pool_size = [2,4,4], strides=[1,1,1])
+        #? x 1 x 1 x 1 x 512
+        a1 = tf.reshape(a1, [-1, 512])
         a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
-        self.predictions = tf.layers.dense(a1, 2)
+        self.predictions = tf.layers.dense(a1, 2, 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         
     
     
@@ -172,14 +179,16 @@ class LungSystem(object):
         #x = self.batchnorm_reuse(x, 'inputs')
         #? x 64 x 128 x 128 x 1
         c1 = tf.layers.conv3d(x, filters=32, kernel_size=[7,7,7], strides=[2,2,2], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c1 = self.batchnorm_reuse(c1, 'layer1')
         c1 = self.leaky_relu(c1)        
         #? x 32 x 64 x 64 x 32
         c1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 16 x 32 x 32 x 32
         c1 = tf.layers.conv3d(c1, filters=64, kernel_size=[3,3,3], strides=[2,2,2], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c1 = self.batchnorm_reuse(c1, 'layer2')
         c1 = self.leaky_relu(c1)
         #? x 8 x 16 x 16 x 64
@@ -187,29 +196,36 @@ class LungSystem(object):
         #? x 4 x 8 x 8 x 64
         
         c2 = tf.layers.conv3d(m1, filters=128, kernel_size=[3,3,3], strides=[1,1,1], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c2 = self.batchnorm_reuse(c2, 'layer3')
         c2 = self.leaky_relu(c2)
         #? x 4 x 8 x 8 x 128
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
         #? x 2 x 4 x 4 x 128
         c3 = tf.layers.conv3d(m2, filters=256, kernel_size=[3,3,3], strides=[2,2,2], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c3 = self.batchnorm_reuse(c3, 'layer4')
         c3 = self.leaky_relu(c3)
         #? x 1 x 2 x 2 x 256
         c4 = tf.layers.conv3d(c3, filters=512, kernel_size=[3,3,3], strides=[1,1,1], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c4 = self.batchnorm_reuse(c4, 'layer5')
         c4 = self.leaky_relu(c4)
         #? x 1 x 2 x 2 x 512
 
         c4 = tf.reshape(c4, (-1, 2*2*512))
         
-        a1 = tf.layers.dense(c4, 512, activation=self.leaky_relu)
+        a1 = tf.layers.dense(c4, 512, activation=self.leaky_relu, 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
         
-        self.predictions = tf.layers.dense(a1,2)
+        self.predictions = tf.layers.dense(a1,2, 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
+                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         
         
         
