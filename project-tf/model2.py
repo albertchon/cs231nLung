@@ -54,7 +54,7 @@ class LungSystem(object):
         self.optimizer = tf.train.AdamOptimizer(self.FLAGS.learning_rate)
 
         print('computing gradients')
-        self.updates = self.optimizer.minimize(self.loss)
+        self.updates = self.optimizer.minimize(self.sm_loss)
         print('setting up saver')
         self.saver = tf.train.Saver()
     def _activation_summary(x):  #from https://github.com/tensorflow/models/blob/master/tutorials/image/cifar10/cifar10.py
@@ -75,10 +75,16 @@ class LungSystem(object):
     def leaky_relu(self, x):
         return tf.maximum(x, self.FLAGS.leak*x)
     
+    def batchnorm_reuse(self, x, scope):
+        return tf.cond(self.is_training, 
+                       lambda: tf.contrib.layers.batch_norm(x, center=True, scale=True, is_training=True, reuse=None, scope=scope),
+                       lambda: tf.contrib.layers.batch_norm(x, center=True, scale=True, is_training=False, reuse=True, scope=scope))
+    
     def setup_naive(self):
         pred = tf.zeros_like(self.images)
         b = tf.get_variable('b', shape=[2])
         self.predictions = pred[:,0,0,:2]*b
+    
     
     def setup_linear_system(self):
         x = tf.reshape(self.images, shape=[-1, self.FLAGS.num_slices*self.FLAGS.image_height*self.FLAGS.image_width])
@@ -117,10 +123,10 @@ class LungSystem(object):
 
     def setup_googlenet(self):
         x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
-        x = tf.layers.batch_normalization(x, training=self.is_training)
+        #x = tf.layers.batch_normalization(x, training=self.is_training)
         #? x 64 x 128 x 128 x 1
         
-        c1 = tf.layers.conv3d(x, filters=32, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
+        c1 = tf.layers.conv3d(x, filters=32, kernel_size=[7,7,7], strides=[2,2,2], padding='same',
                               kernel_initializer=tf.contrib.layers.xavier_initializer())
         #c1 = tf.layers.batch_normalization(c1, training=self.is_training)
         c1 = self.leaky_relu(c1)
@@ -161,38 +167,49 @@ class LungSystem(object):
     
     def setup_asu(self):
         # http://www.public.asu.edu/~ranirudh/papers/spie2016.pdf
+        #with tf.variable_scope("inputs"):
         x = tf.reshape(self.images, [-1, self.FLAGS.num_slices, self.FLAGS.image_height, self.FLAGS.image_width, 1])
+        #x = self.batchnorm_reuse(x, 'inputs')
         #? x 64 x 128 x 128 x 1
-        x = tf.layers.average_pooling3d(x, pool_size = [4,4,4], strides=[4,4,4])
-        #? x 16 x 32 x 32 x 1
-        x = tf.layers.batch_normalization(x, training=self.is_training)
-        
-        c1 = tf.layers.conv3d(x, filters=64, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             activation=self.leaky_relu)
+        c1 = tf.layers.conv3d(x, filters=32, kernel_size=[7,7,7], strides=[2,2,2], padding='same', 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #c1 = self.batchnorm_reuse(c1, 'layer1')
+        c1 = self.leaky_relu(c1)        
+        #? x 32 x 64 x 64 x 32
+        c1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
+        #? x 16 x 32 x 32 x 32
+        c1 = tf.layers.conv3d(c1, filters=64, kernel_size=[3,3,3], strides=[2,2,2], padding='same', 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #c1 = self.batchnorm_reuse(c1, 'layer2')
+        c1 = self.leaky_relu(c1)
         #? x 8 x 16 x 16 x 64
-        
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 4 x 8 x 8 x 64
         
-        c2 = tf.layers.conv3d(m1, filters=64, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             activation=self.leaky_relu)
-        #? x 4 x 8 x 8 x 64
+        c2 = tf.layers.conv3d(m1, filters=128, kernel_size=[3,3,3], strides=[1,1,1], padding='same', 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #c2 = self.batchnorm_reuse(c2, 'layer3')
+        c2 = self.leaky_relu(c2)
+        #? x 4 x 8 x 8 x 128
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
-        #? x 2 x 4 x 4 x 64
-        c3 = tf.layers.conv3d(m2, filters=128, kernel_size=[3,3,3], strides=[2,2,2], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             activation=self.leaky_relu)
-        #? x 1 x 2 x 2 x 128
-        c4 = tf.layers.conv3d(c3, filters=256, kernel_size=[3,3,3], strides=[1,1,1], padding='same',
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             activation=self.leaky_relu)
+        #? x 2 x 4 x 4 x 128
+        c3 = tf.layers.conv3d(m2, filters=256, kernel_size=[3,3,3], strides=[2,2,2], padding='same', 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #c3 = self.batchnorm_reuse(c3, 'layer4')
+        c3 = self.leaky_relu(c3)
         #? x 1 x 2 x 2 x 256
-        c4 = tf.reshape(c4, (-1, 1024))
+        c4 = tf.layers.conv3d(c3, filters=512, kernel_size=[3,3,3], strides=[1,1,1], padding='same', 
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
+        #c4 = self.batchnorm_reuse(c4, 'layer5')
+        c4 = self.leaky_relu(c4)
+        #? x 1 x 2 x 2 x 512
+
+        c4 = tf.reshape(c4, (-1, 2*2*512))
+        
         a1 = tf.layers.dense(c4, 512, activation=self.leaky_relu)
-        a2 = tf.layers.dense(a1, 256, activation=self.leaky_relu)
-        self.predictions = tf.layers.dense(a2,2)
+        a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
+        
+        self.predictions = tf.layers.dense(a1,2)
         
         
         
@@ -287,7 +304,9 @@ class LungSystem(object):
         """
         with vs.variable_scope("loss"):
             # self.start_answer (N)
-            self.loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)      
+            self.sm_loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)  
+            self.svm_loss = tf.losses.hinge_loss(tf.one_hot(self.labels, 2), self.predictions) 
+            tf.summary.scalar('sm loss', self.sm_loss)
 
     def optimize(self, session, x_train, y_train):
         
@@ -308,7 +327,7 @@ class LungSystem(object):
         # grad_norm, param_norm
         # merged = tf.summary.merge_all()
         
-        output_feed = [self.updates, self.loss]
+        output_feed = [self.updates, self.sm_loss]
         
         
 
@@ -316,7 +335,7 @@ class LungSystem(object):
         # train_writer.add_summary(outputs[2], 3)
         return outputs[:2]
 
-    def test(self, session, x, y):
+    def test(self, session, x, y, train_writer, e, merged, addBool):
         """
         in here you should compute a cost for your validation set
         and tune your hyperparameters according to the validation set performance
@@ -333,7 +352,8 @@ class LungSystem(object):
             if index % self.FLAGS.batch_size == 0:
                 batch_indices.append(index)
         num_minibatches = len(batch_indices) - 1
-        losses = []
+        svm_losses = []
+        sm_losses = []
         for b_end in range(1, num_minibatches + 1):
             start = batch_indices[b_end-1]
             end = batch_indices[b_end]
@@ -348,11 +368,14 @@ class LungSystem(object):
             input_feed[self.labels] = y_batch
             input_feed[self.is_training] = False          
 
-            output_feed = [self.loss]
+            output_feed = [self.svm_loss, self.sm_loss, merged]
 
             outputs = session.run(output_feed, input_feed)
-            losses += outputs # TODO: consider weighing last
-        return [sum(losses)/float(len(losses))]
+            svm_losses += outputs[:1] # TODO: consider weighing last
+            sm_losses += outputs[1:2]
+            if addBool:
+                train_writer.add_summary(outputs[2], e)
+        return [sum(svm_losses)/float(len(svm_losses)), sum(sm_losses)/float(len(sm_losses))]
 
     def predict(self, session, x):
         """
@@ -424,6 +447,7 @@ class LungSystem(object):
 
         train_losses = []
         val_losses = []
+        merged = tf.summary.merge_all()
         train_writer = tf.summary.FileWriter('summaries', session.graph) # this is for training only
         for e in range(self.FLAGS.epochs):
             logging.info("="*80)
@@ -447,26 +471,31 @@ class LungSystem(object):
             train_hm = (2*train_sens*train_spec) / (train_sens + train_spec)
             
             
-            train_loss = self.test(session, x_train, y_train)[0]
-            logging.info("Training loss: %s" % (train_loss))
+            train_loss = self.test(session, x_train, y_train, train_writer, e, merged, True)
+            train_svm_loss = train_loss[0]
+            train_sm_loss = train_loss[1]            
+            #logging.info("SVM Training loss: %s" % (train_svm_loss))
+            logging.info("SM Training loss: %s" % (train_sm_loss))
             logging.info("Training: accuracy = %s, sensitivity = %s, specificity = %s" % (train_accuracy, 
                 train_sens, train_spec))
 
             val_accuracy, val_sens, val_spec = self.accuracy(session, x_val, y_val)
-            val_loss = self.test(session, x_val, y_val)[0]
-            val_losses.append(val_loss)
-            logging.info("Validation loss: %s" % (val_loss))
+            val_loss = self.test(session, x_val, y_val, train_writer, e, merged, False)
+            val_svm_loss = val_loss[0]
+            val_sm_loss = val_loss[1]            
+            #logging.info("SVM Validation loss: %s" % (val_svm_loss))
+            logging.info("SM Validation loss: %s" % (val_sm_loss))
             logging.info("Validation: accuracy = %s, sensitivity = %s, specificity = %s" % (val_accuracy, 
                 val_sens, val_spec))
             if self.FLAGS.save_best_train_loss:
-                if train_loss < best_train_loss:
-                    logging.info("NEW BEST TRAIN LOSS: %s, SAVING!" % (train_loss))
-                    best_train_loss = train_loss
+                if train_sm_loss < best_train_loss:
+                    logging.info("NEW BEST TRAIN LOSS: %s, SAVING!" % (train_sm_loss))
+                    best_train_loss = train_sm_loss
                     self.saver.save(session, train_dir + 'model.weights')  
                 logging.info("CURRENT BEST TRAIN LOSS: %s" % (best_train_loss))
             else:                
-                if val_loss < best_val_loss:
-                    logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_loss))
-                    best_val_loss = val_loss
+                if val_sm_loss < best_val_loss:
+                    logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_sm_loss))
+                    best_val_loss = val_sm_loss
                     self.saver.save(session, train_dir + 'model.weights')  
                 logging.info("CURRENT BEST VAL LOSS: %s" % (best_val_loss))
