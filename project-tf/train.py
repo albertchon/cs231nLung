@@ -10,10 +10,10 @@ import random
 
 
 import logging
-starting=False
+starting=True
 logging.basicConfig(level=logging.INFO)
 
-tf.app.flags.DEFINE_bool("save_best_train_loss", False, "whether save based on tr or val loss")
+tf.app.flags.DEFINE_bool("save_best_train_loss", True, "whether save based on tr or val loss")
 tf.app.flags.DEFINE_float("best_val_loss", float('inf'), "current best val loss")
 tf.app.flags.DEFINE_float("best_train_loss", float('inf'), "current best train loss")
 tf.app.flags.DEFINE_string("model", 'googlenet', "Type of model to use: linear or cnn or simplecnn")
