@@ -518,7 +518,7 @@ class LungSystem(object):
                 logging.info("CURRENT BEST TRAIN LOSS: %s" % (best_train_loss))
             else:                
                 if val_sm_loss < best_val_loss:
-                    logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_loss))
+                    logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_sm_loss))
                     best_val_loss = val_sm_loss
                     self.saver.save(session, train_dir + 'model.weights')  
                 logging.info("CURRENT BEST VAL LOSS: %s" % (best_val_loss))
