@@ -440,8 +440,8 @@ class LungSystem(object):
 
             outputs = self.predict(session, x_batch)
             probabilities = outputs[0]
-            probabilities = tf.nn.softmax(probabilities).eval(session=session)
-            probabilities[:,1] += 1-2*0.02
+            #probabilities = tf.nn.softmax(probabilities).eval(session=session)
+            #probabilities[:,1] += 1-2*0.02
             pred = np.argmax(probabilities, axis=1)
             
             # print(probabilities)
@@ -520,5 +520,5 @@ class LungSystem(object):
                 if val_sm_loss < best_val_loss:
                     logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_loss))
                     best_val_loss = val_sm_loss
-                    self.saver.save(session, val_dir + 'model.weights')  
+                    self.saver.save(session, train_dir + 'model.weights')  
                 logging.info("CURRENT BEST VAL LOSS: %s" % (best_val_loss))
