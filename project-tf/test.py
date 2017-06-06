@@ -13,25 +13,25 @@ import logging
 starting=False
 logging.basicConfig(level=logging.INFO)
 
-
 tf.app.flags.DEFINE_bool("save_best_train_loss", False, "whether save based on tr or val loss")
+tf.app.flags.DEFINE_float("best_gm", float('-inf'), "current best GM between sens and spec")
 tf.app.flags.DEFINE_float("best_val_loss", float('inf'), "current best val loss")
 tf.app.flags.DEFINE_float("best_train_loss", float('inf'), "current best train loss")
-tf.app.flags.DEFINE_string("model", 'asu', "Type of model to use: linear or cnn or simplecnn")
+tf.app.flags.DEFINE_string("model", 'googlenet', "Type of model to use: linear or cnn or simplecnn")
 tf.app.flags.DEFINE_string("features", 'pixels', "Type of features to use: pixels or hog")
-tf.app.flags.DEFINE_integer("epochs", 200, "number of epochs")
-tf.app.flags.DEFINE_float("learning_rate", 0.0003, "Learning rate.")
+tf.app.flags.DEFINE_integer("epochs", 99999, "number of epochs")
+tf.app.flags.DEFINE_float("learning_rate", 0.0001, "Learning rate.")
 tf.app.flags.DEFINE_float("leak", 0.01, "Leakiness")
-tf.app.flags.DEFINE_float("dropout", 0.0, "dropout prob")
+tf.app.flags.DEFINE_float("dropout", 0.5, "dropout prob")
+tf.app.flags.DEFINE_float("reg_scale", 0.0001, "Size of val set")
 tf.app.flags.DEFINE_integer("num_slices", 64, "number of CT slices for each patient")
 tf.app.flags.DEFINE_integer("image_height", 128, "height of each slice in pixels")
 tf.app.flags.DEFINE_integer("image_width", 128, "width of each slice in pixels")
-tf.app.flags.DEFINE_integer("conv1_filters", 64, "number of conv filters")
-tf.app.flags.DEFINE_integer("conv2_filters", 32, "number of conv filters")
-tf.app.flags.DEFINE_integer("aff_size", 256, "affine layer size")
 tf.app.flags.DEFINE_integer("batch_size", 32, "Batch size to use during training.")
-tf.app.flags.DEFINE_float("train_size", 0.8, "Size of train set")
+tf.app.flags.DEFINE_float("train_size", 0.6, "Size of train set")
 tf.app.flags.DEFINE_float("val_size", 0.2, "Size of val set")
+tf.app.flags.DEFINE_float("test_size", 0.2, "Size of val set")
+
 
 FLAGS = tf.app.flags.FLAGS
 train_dir = './weights/%s-%s/' % (FLAGS.model, FLAGS.features)

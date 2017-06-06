@@ -134,6 +134,7 @@ class LungSystem(object):
                              kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
         #c1 = tf.layers.batch_normalization(c1, training=self.is_training)
         c1 = self.leaky_relu(c1)
+        c1 = tf.layers.dropout(c1, rate=0.2, training=self.is_training)
         #? x 32 x 64 x 64 x 32
         m1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 16 x 32 x 32 x 32
@@ -143,24 +144,29 @@ class LungSystem(object):
         #? x 16 x 32 x 32 x 64
         #c2 = tf.layers.batch_normalization(c2, training=self.is_training)
         c2 = self.leaky_relu(c2)
+        c2 = tf.layers.dropout(c2, rate=0.2, training=self.is_training)
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
         #? x 8 x 16 x 16 x 64
         
         i1 = self.inception_a(m2, 64)
+        
         #? x 8 x 16 x 16 x 128
         i2 = self.inception_a(i1, 128, False)
+        i2 = tf.layers.dropout(i2, rate=0.2, training=self.is_training)
         #? x 8 x 16 x 16 x 128
         m3 = tf.layers.max_pooling3d(i2, pool_size=2, strides=2, padding='valid')
         #? x 4 x 8 x 8 x 128
         i3 = self.inception_a(m3, 128)
         #? x 4 x 8 x 8 x 256
         i4 = self.inception_a(i3, 256, False)
+        i4 = tf.layers.dropout(i4, rate=0.2, training=self.is_training)
         #? x 4 x 8 x 8 x 256
         m4 = tf.layers.max_pooling3d(i4, pool_size=2, strides=2, padding='valid')  
         #? x 2 x 4 x 4 x 256
         i5 = self.inception_a(m4, 256)
         #? x 2 x 4 x 4 x 512
         i6 = self.inception_a(i5, 512, False)
+        i6 = tf.layers.dropout(i6, rate=0.2, training=self.is_training)
         #? x 2 x 4 x 4 x 512
         a1 = tf.layers.average_pooling3d(i6, pool_size = [2,4,4], strides=[1,1,1])
         #? x 1 x 1 x 1 x 512
@@ -179,16 +185,14 @@ class LungSystem(object):
         #x = self.batchnorm_reuse(x, 'inputs')
         #? x 64 x 128 x 128 x 1
         c1 = tf.layers.conv3d(x, filters=32, kernel_size=[7,7,7], strides=[2,2,2], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         #c1 = self.batchnorm_reuse(c1, 'layer1')
         c1 = self.leaky_relu(c1)        
         #? x 32 x 64 x 64 x 32
         c1 = tf.layers.max_pooling3d(c1, pool_size=2, strides=2, padding='valid')
         #? x 16 x 32 x 32 x 32
         c1 = tf.layers.conv3d(c1, filters=64, kernel_size=[3,3,3], strides=[2,2,2], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         #c1 = self.batchnorm_reuse(c1, 'layer2')
         c1 = self.leaky_relu(c1)
         #? x 8 x 16 x 16 x 64
@@ -196,22 +200,19 @@ class LungSystem(object):
         #? x 4 x 8 x 8 x 64
         
         c2 = tf.layers.conv3d(m1, filters=128, kernel_size=[3,3,3], strides=[1,1,1], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         #c2 = self.batchnorm_reuse(c2, 'layer3')
         c2 = self.leaky_relu(c2)
         #? x 4 x 8 x 8 x 128
         m2 = tf.layers.max_pooling3d(c2, pool_size=2, strides=2, padding='valid')
         #? x 2 x 4 x 4 x 128
         c3 = tf.layers.conv3d(m2, filters=256, kernel_size=[3,3,3], strides=[2,2,2], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         #c3 = self.batchnorm_reuse(c3, 'layer4')
         c3 = self.leaky_relu(c3)
         #? x 1 x 2 x 2 x 256
         c4 = tf.layers.conv3d(c3, filters=512, kernel_size=[3,3,3], strides=[1,1,1], padding='same', 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         #c4 = self.batchnorm_reuse(c4, 'layer5')
         c4 = self.leaky_relu(c4)
         #? x 1 x 2 x 2 x 512
@@ -219,13 +220,11 @@ class LungSystem(object):
         c4 = tf.reshape(c4, (-1, 2*2*512))
         
         a1 = tf.layers.dense(c4, 512, activation=self.leaky_relu, 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         a1 = tf.layers.dropout(a1, rate=self.FLAGS.dropout, training=self.is_training)
         
         self.predictions = tf.layers.dense(a1,2, 
-                              kernel_initializer=tf.contrib.layers.xavier_initializer(),
-                             kernel_regularizer=tf.nn.l2_loss, bias_regularizer=tf.nn.l2_loss)
+                              kernel_initializer=tf.contrib.layers.xavier_initializer())
         
         
         
@@ -319,9 +318,12 @@ class LungSystem(object):
         :return:
         """
         with vs.variable_scope("loss"):
-            # self.start_answer (N)
-            self.sm_loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions)  
-            self.svm_loss = tf.losses.hinge_loss(tf.one_hot(self.labels, 2), self.predictions) 
+            # self.start_answer
+            regularizer = tf.contrib.layers.l2_regularizer(scale=self.FLAGS.reg_scale)
+            reg_variables = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+            reg_term = tf.contrib.layers.apply_regularization(regularizer, reg_variables)
+            self.sm_loss = tf.losses.sparse_softmax_cross_entropy(self.labels, self.predictions) + reg_term
+            self.svm_loss = tf.losses.hinge_loss(tf.one_hot(self.labels, 2), self.predictions) + reg_term
             tf.summary.scalar('sm loss', self.sm_loss)
 
     def optimize(self, session, x_train, y_train):
@@ -438,7 +440,10 @@ class LungSystem(object):
 
             outputs = self.predict(session, x_batch)
             probabilities = outputs[0]
+            probabilities = tf.nn.softmax(probabilities).eval(session=session)
+            probabilities[:,1] += 1-2*0.02
             pred = np.argmax(probabilities, axis=1)
+            
             # print(probabilities)
             TP += np.sum(y_batch[y_batch == 1] == pred[y_batch == 1])
             TN += np.sum(y_batch[y_batch == 0] == pred[y_batch == 0])
@@ -460,6 +465,7 @@ class LungSystem(object):
 
         best_train_loss = self.FLAGS.best_train_loss
         best_val_loss = self.FLAGS.best_val_loss
+        best_gm = self.FLAGS.best_gm
 
         train_losses = []
         val_losses = []
@@ -496,6 +502,7 @@ class LungSystem(object):
                 train_sens, train_spec))
 
             val_accuracy, val_sens, val_spec = self.accuracy(session, x_val, y_val)
+            val_gm = (val_sens*val_spec)**0.5
             val_loss = self.test(session, x_val, y_val, train_writer, e, merged, False)
             val_svm_loss = val_loss[0]
             val_sm_loss = val_loss[1]            
@@ -511,7 +518,7 @@ class LungSystem(object):
                 logging.info("CURRENT BEST TRAIN LOSS: %s" % (best_train_loss))
             else:                
                 if val_sm_loss < best_val_loss:
-                    logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_sm_loss))
+                    logging.info("NEW BEST VAL LOSS: %s, SAVING!" % (val_loss))
                     best_val_loss = val_sm_loss
-                    self.saver.save(session, train_dir + 'model.weights')  
+                    self.saver.save(session, val_dir + 'model.weights')  
                 logging.info("CURRENT BEST VAL LOSS: %s" % (best_val_loss))
