@@ -1,3 +1,4 @@
+# Luna preprocessing code from https://www.kaggle.com/arnavkj95/candidate-generation-and-luna16-preprocessing
 import numpy as np # linear algebra
 import os
 import skimage, os
